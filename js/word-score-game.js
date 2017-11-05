@@ -103,6 +103,16 @@ var BAG_OF_LETTERS = [
 
 var YOUR_HAND = new Array();
 var SCORE = 0;
+
+var possibleList = new Array();
+//used to store every possible combination of given letters.
+var scoreList = new Array();
+//used to store every possible words' score so that
+//we can pick the highest one.
+
+var character = new Array("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z");
+//used to replace "_" in a word
+
 function startGame() {
 	addNumbersFromBag();
 	displayHand();
@@ -113,9 +123,12 @@ function startGame() {
 
 function addNumbersFromBag(){
 	console.log("your hand has:" + YOUR_HAND.length);
-	for(i=YOUR_HAND.length; i < 7; i++){
+	var left = BAG_OF_LETTERS.length;
+	var temp = YOUR_HAND.length;
+	for(i=YOUR_HAND.length; i < (left>6?7:left+temp)&&i<7; i++){
 		YOUR_HAND[i] = getAvailableLetter();
 	}
+	$( "#bag-number").html(BAG_OF_LETTERS.length);
 	
 }
 
@@ -128,14 +141,16 @@ function displayHand(){
 		$( "#letter-" + (i+1)).addClass("letter-" + YOUR_HAND[i].letter);
 		$( "#points-" + (i+1)).addClass("points-" + YOUR_HAND[i].pointsWhenLettersUsed);
 		
-		
-		
-		
 		$( "#letter-" + (i+1)).html(YOUR_HAND[i].letter);
 		
 		$( "#points-" + (i+1)).html(YOUR_HAND[i].pointsWhenLettersUsed);
 	}
-	
+
+	for(i = YOUR_HAND.length; i<7; i++) {
+		$( "#letter-" + (i+1)).html("");
+		$( "#points-" + (i+1)).html("");
+	}//When there is no more than 7 letters in hand,
+	//we can see a blank grid on the web page.
 }
 
 
@@ -150,24 +165,240 @@ function getAvailableLetter(){
 
 function findWordToUse(){
  //TODO Your job starts here.
-	alert("Your code needs to go here");	
+ 	var c = [].concat(YOUR_HAND);
+	var p = new prefix(0,"");
+	//c and p are required to call the function getPossibleWordsToList()
+
+	var underlineNum = 0;//used to store numbers of underline in a word
+
+	for(ii=0; ii < YOUR_HAND.length; ii++){
+		if(YOUR_HAND[ii].letter == "_"){
+			underlineNum++;
+		}
+	}
+
+	getPossibleWordsToList(p,c);
+	//This function will add all possible word to the possibleList
+	//also corresponding scores to the scoreList
+
+	if(possibleList.length == 0){
+		//if nothing found
+		alert("Sorry, no match to a valid word!");
+	}else{
+		//Then find the highest score one
+		var highestScoreIndex=0;
+		var highestScore=0;
+		for(i = 0; i< possibleList.length; i++){
+			console.log(" "+possibleList[i]+" "+scoreList[i]);
+			if(highestScore< scoreList[i]){
+				highestScore = scoreList[i];
+				highestScoreIndex = i;
+			}
+		}
+		var WORD = possibleList[highestScoreIndex];
+		var wordAsArray = WORD.toUpperCase().split("");
+		
+		for (i = 0; i < wordAsArray.length; i++) {
+			var underlineUsed = true;
+			for(ii=0; ii<YOUR_HAND.length; ii++){
+				console.log("              " + YOUR_HAND[ii].letter + "<-Checking");
+				if(YOUR_HAND[ii].letter == wordAsArray [i]){
+					if(!YOUR_HAND[ii].used){
+						console.log("     " + YOUR_HAND[ii].letter + "<-Found");
+						YOUR_HAND[ii].used = true;
+						underlineUsed = false;
+						break;
+					}
+				}
+			}
+			if(underlineUsed&&(underlineNum>0)){
+				for(ii=0; ii<YOUR_HAND.length; ii++){
+					if(YOUR_HAND[ii].letter == "_"){
+						underlineNum--;
+						YOUR_HAND[ii].used = true;
+						break;
+					}
+				}
+			}
+		}
+		successfullyAddedWord(WORD);
+		possibleList = new Array();
+		scoreList = new Array();
+	}
+		
 }
+
+//This is a class to store score of a prefix at the same thime
+function prefix(score,letters){
+	this.score = score;
+	this.letters = letters;
+}
+
+//The function to add words
+//Using recursion
+function getPossibleWordsToList(p,c){
+	if(c.length == 1){
+		if(c[0].letter == "_"){//deal with the underline situation
+			for(var i = 0; i< 26; i++){
+				var str1 = p.letters + character[i];
+				if(possibleList.indexOf(str1)<=-1 && isThisAWord(str1)){
+					possibleList[possibleList.length] = str1;
+					scoreList[scoreList.length] = p.score;
+				}
+			}
+		}else{
+			var str1 = p.letters+c[0].letter;
+			if(possibleList.indexOf(str1)<=-1 && isThisAWord(str1)){
+				possibleList[possibleList.length] = str1;
+				scoreList[scoreList.length] = p.score+c[0].pointsWhenLettersUsed;
+			}
+		}	
+		
+	}else{
+		for(var i = 0; i<c.length; i++){
+			if(c[i].letter == "_"){//deal with the underline situation
+				for(var ii = 0; ii< 26; ii++){
+					var str2 = p.letters+character[ii];
+					if(possibleList.indexOf(str2)<=-1 && isThisAWord(str2)){
+						possibleList[possibleList.length] = str2;
+						scoreList[scoreList.length] = p.score;
+						
+					}
+				}
+				
+			}else{
+				var str2 = p.letters+c[i].letter;
+				if(possibleList.indexOf(str2)<=-1 && isThisAWord(str2)){
+					possibleList[possibleList.length] = str2;
+					scoreList[scoreList.length] = p.score+c[i].pointsWhenLettersUsed;
+					
+				}
+			}
+			var cc = [].concat(c);
+			cc.splice(i,1);
+			var score = p.score+c[i].pointsWhenLettersUsed;
+			getPossibleWordsToList(new prefix(score,str2),cc);
+		}
+	}
+}
+
 function humanFindWordToUse(){
 	
 	 var humanFoundWord = $( "#human-word-input").val();
 	 console.log("Checking human workd of:" + humanFoundWord);
-	 if(isThisAWord(humanFoundWord)){
-		 if(haveLettersForWord(humanFoundWord)){
-			 successfullyAddedWord(humanFoundWord);
-		 }else{
-			 alert(humanFoundWord + " - Do not have the letters for this word");
+
+	 var underlineNum = 0;//found out how many underline in a word
+	 for(ii = 0 ; ii < YOUR_HAND.length; ii++){
+		 if(YOUR_HAND[ii].letter == "_"){
+			 underlineNum++;
 		 }
+	 }
+	 if(humanFoundWord.indexOf("_") >= 0 && underlineNum != 0){
+	 	//if there is at least one underline in a word
+	 	//we must think about all possible combination of words
+	 	//testUnderline is what can find out the highest score of
+	 	//certain word of users
+	   testUnderline(humanFoundWord, underlineNum);
 	 }else{
-		 alert(humanFoundWord + " is not a valid word.");
+		 if(isThisAWord(humanFoundWord)){
+			 if(haveLettersForWord(humanFoundWord)){
+				 successfullyAddedWord(humanFoundWord);
+			 }else{
+				 alert(humanFoundWord + " - Do not have the letters for this word");
+			 }
+		 }else{
+			 alert(humanFoundWord + " is not a valid word.");
+		 }
 	 }
 		
 }
 
+function testUnderline(word,underlineNum){
+	var wordAsArray = word.toUpperCase().split("");
+	var underlineNumber = 0;
+	var wordList = new Array();
+	var str;
+	var highestScoreIndex=0;//Store the highest scores' index of list
+	var highestScore=0;
+	for (i = 0; i < wordAsArray.length; i++) {
+		if(wordAsArray[i] == "_"){
+			underlineNumber++;
+			if(wordList.length == 0){
+				for(var iii = 0 ; iii < 26 ; iii++){
+					wordList[iii] = character[iii];
+				}
+			}else{
+				var list = new Array();
+				
+				for(var ii = 0; ii<wordList.length; ii++){
+					list[ii] = new Array();
+					for(var iii = 0 ; iii < 26 ; iii++){
+						list[ii][iii] = wordList[ii] + character[iii];
+					}
+				}
+				wordList = new Array();
+				for(var ii = 0; ii<list.length; ii++){
+					for(var iii=0;iii<list[ii].length;iii++){
+						wordList[wordList.length] = list[ii][iii];
+					}
+				}
+			}
+			
+		}else{
+			if(wordList.length == 0){
+				wordList[0] = wordAsArray[i];
+			}else{
+				for(var ii = 0; ii<wordList.length; ii++){
+					wordList[ii] += wordAsArray[i];
+				}
+			}
+			
+		}
+	}
+	if(underlineNumber> underlineNum){
+		//if user uses more than given underline
+		alert(word + " used more '_' than given.");
+	}else{
+		for (i = 0; i < wordList.length; i++) {
+			if(isThisAWord(wordList[i])){
+				wordAsArray = wordList[i].toUpperCase().split("");
+				var scores=0;
+				for(var ii=0; ii < wordAsArray.length; ii++){
+					for(var iii=0; iii < YOUR_HAND.length; iii++){
+						if(wordAsArray[ii]==YOUR_HAND[iii].letter && YOUR_HAND[iii].used == false){
+							scores += YOUR_HAND[iii].pointsWhenLettersUsed;
+							YOUR_HAND[iii].used = true;
+						}
+					}
+				}
+				for(var iii=0; iii < YOUR_HAND.length; iii++){
+					YOUR_HAND[iii].used = false;
+				}
+				if(highestScore < scores){
+					highestScore = scores;
+					highestScoreIndex = i;
+				}
+			}
+		}
+		if(highestScore == 0){
+			 alert(word + " can not match any valid word.");
+		}else{
+			wordAsArray = wordList[highestScoreIndex].toUpperCase().split("");
+			var scores=0;
+			for(var ii=0; ii < wordAsArray.length; ii++){
+				for(var iii=0; iii < YOUR_HAND.length; iii++){
+					if((wordAsArray[ii]==YOUR_HAND[iii].letter && YOUR_HAND[iii].used == false)
+							||(YOUR_HAND[iii].letter == "_"&&YOUR_HAND[iii].used == false&&underlineNumber>0)){
+						YOUR_HAND[iii].used = true;
+					}
+				}
+			}
+			successfullyAddedWord(wordList[highestScoreIndex]);
+		}
+		
+	}
+	
+} 
 
 function successfullyAddedWord(foundWord){
 	$( "#word-history-list").append("<li>" + foundWord + "</li>");
@@ -249,7 +480,10 @@ function retireHand(){
 	YOUR_HAND = new Array();
 	addNumbersFromBag();
 	displayHand();
+
+	$( "#bag-number").html(BAG_OF_LETTERS.length);
 }
+
 function clearClasses(){
 	for(ii=0; ii < YOUR_HAND.length; ii++){
 		$("#letter-" + (ii+1)).removeClass("letter-" + YOUR_HAND[ii].letter);
